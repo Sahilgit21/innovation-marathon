@@ -1,3 +1,31 @@
+import streamlit as st
+import pandas as pd
+import joblib
+
+# Load trained model
+model = joblib.load("career_prediction_model.pkl")
+
+st.set_page_config(page_title="AI Career Prediction", layout="centered")
+
+st.title("🎓 AI-Based Career Prediction System")
+st.write("Enter your skill details below to get career recommendation.")
+
+# -------- USER INPUTS -------- #
+
+hours = st.slider("Hours working per day", 0, 12, 6)
+logical = st.slider("Logical quotient rating (0-5)", 0, 5, 3)
+hackathons = st.slider("Hackathons participated", 0, 10, 1)
+coding = st.slider("Coding skills rating (0-5)", 0, 5, 3)
+public = st.slider("Public speaking points (0-5)", 0, 5, 2)
+self_learning = st.selectbox("Self-learning capability?", [0, 1])
+certifications = st.slider("Certifications count", 0, 10, 1)
+workshops = st.slider("Workshops attended", 0, 10, 1)
+reading = st.slider("Reading & Writing Skills (0-5)", 0, 5, 3)
+memory = st.slider("Memory capability score", 0, 5, 3)
+management = st.selectbox("Management or Technical (0=Management, 1=Technical)", [0, 1])
+teamwork = st.selectbox("Worked in teams ever?", [0, 1])
+introvert = st.selectbox("Introvert?", [0, 1])
+
 # -------- PREDICTION -------- #
 
 if st.button("🔮 Predict Career"):
@@ -20,7 +48,7 @@ if st.button("🔮 Predict Career"):
 
     input_data = pd.DataFrame([input_dict])
 
-    # 🔥 IMPORTANT LINE (Fix feature mismatch)
+    # Fix feature mismatch
     input_data = input_data.reindex(columns=model.feature_names_in_, fill_value=0)
 
     prediction = model.predict(input_data)
@@ -28,18 +56,18 @@ if st.button("🔮 Predict Career"):
 
     st.success(f"🎯 Recommended Career Path: {prediction[0]}")
 
-    # -------- WOW FACTOR: Probability Display -------- #
+    # Probability Graph
     st.subheader("📊 Career Prediction Probability")
     prob_df = pd.DataFrame(probabilities, columns=model.classes_)
     st.bar_chart(prob_df.T)
 
-    # -------- WOW FACTOR: Skill Readiness Score -------- #
+    # Readiness Score
     readiness_score = int((coding + logical + reading + memory) / 20 * 100)
     st.subheader("📈 Career Readiness Score")
     st.progress(readiness_score)
     st.write(f"Overall Readiness: {readiness_score}%")
 
-    # -------- Personalized Action Plan -------- #
+    # Action Plan
     st.subheader("📌 Personalized Action Plan")
 
     if coding < 3:
