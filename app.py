@@ -1,66 +1,42 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import joblib
 
-# ---------------- PAGE CONFIG ---------------- #
-st.set_page_config(page_title="AI Career Advisor", page_icon="🎯", layout="wide")
+# ------------------ PAGE CONFIG ------------------ #
+st.set_page_config(page_title="AI Career Guidance System", layout="wide")
 
-# ---------------- CUSTOM CSS ---------------- #
-st.markdown("""
-    <style>
-    .main {
-        background-color: #f4f6f9;
-    }
-    .title {
-        font-size:40px;
-        font-weight:700;
-        text-align:center;
-        color:#1f4e79;
-    }
-    .subtitle {
-        text-align:center;
-        font-size:18px;
-        color:gray;
-    }
-    .card {
-        background-color:white;
-        padding:20px;
-        border-radius:15px;
-        box-shadow:0px 4px 10px rgba(0,0,0,0.1);
-    }
-    </style>
-""", unsafe_allow_html=True)
+st.title("🎓 AI-Powered Career Guidance System")
+st.write("Get personalized career recommendations based on your skills and interests.")
 
-# ---------------- LOAD MODEL ---------------- #
+# ------------------ LOAD MODEL ------------------ #
 model = joblib.load("career_prediction_model.pkl")
 label_encoder = joblib.load("label_encoder.pkl")
 
-# ---------------- HEADER ---------------- #
-st.markdown('<p class="title">🎓 AI-Powered Career Guidance System</p>', unsafe_allow_html=True)
-st.markdown('<p class="subtitle">Smart Career Prediction + Personalized Action Plan</p>', unsafe_allow_html=True)
-st.markdown("---")
+# ------------------ USER INPUT ------------------ #
+st.subheader("📝 Enter Your Details")
 
-# ---------------- SIDEBAR INPUTS ---------------- #
-st.sidebar.header("📊 Enter Your Skill Details")
+col1, col2 = st.columns(2)
 
-hours = st.sidebar.slider("Hours working per day", 0, 12, 6)
-logical = st.sidebar.slider("Logical quotient rating", 0, 5, 3)
-hackathons = st.sidebar.slider("Hackathons", 0, 10, 1)
-coding = st.sidebar.slider("Coding skills rating", 0, 5, 3)
-public = st.sidebar.slider("Public speaking", 0, 5, 2)
-self_learning = st.sidebar.selectbox("Self-learning capability?", [0, 1])
-certifications = st.sidebar.slider("Certifications", 0, 10, 1)
-workshops = st.sidebar.slider("Workshops", 0, 10, 1)
-reading = st.sidebar.slider("Reading & Writing Skills", 0, 5, 3)
-memory = st.sidebar.slider("Memory capability score", 0, 5, 3)
-management = st.sidebar.selectbox("Management (0) / Technical (1)", [0, 1])
-teamwork = st.sidebar.selectbox("Worked in teams?", [0, 1])
-introvert = st.sidebar.selectbox("Introvert?", [0, 1])
+with col1:
+    hours = st.slider("Hours working per day", 0, 12, 5)
+    logical = st.slider("Logical quotient rating (1-5)", 1, 5, 3)
+    hackathons = st.slider("Hackathons participated", 0, 10, 1)
+    coding = st.slider("Coding skills rating (1-5)", 1, 5, 3)
+    public = st.slider("Public speaking points (1-5)", 1, 5, 3)
+    self_learning = st.selectbox("Self-learning capability?", [0, 1])
 
-st.markdown("## 🚀 Get Career Recommendation")
+with col2:
+    certifications = st.slider("Certifications completed", 0, 10, 1)
+    workshops = st.slider("Workshops attended", 0, 10, 1)
+    reading = st.slider("Reading & writing skills (1-5)", 1, 5, 3)
+    memory = st.slider("Memory capability score (1-5)", 1, 5, 3)
+    management = st.selectbox("Management (1) or Technical (0)?", [0, 1])
+    teamwork = st.selectbox("Worked in teams ever?", [0, 1])
+    introvert = st.selectbox("Introvert?", [0, 1])
 
-# ---------------- PREDICTION ---------------- #
-if st.button("🔮 Predict My Career"):
+# ------------------ PREDICTION ------------------ #
+if st.button("🔮 Predict Career"):
 
     input_dict = {
         'Hours working per day': hours,
@@ -79,53 +55,53 @@ if st.button("🔮 Predict My Career"):
     }
 
     input_data = pd.DataFrame([input_dict])
+
+    # Ensure correct feature order
     input_data = input_data.reindex(columns=model.feature_names_in_, fill_value=0)
 
+    # Predict
     prediction = model.predict(input_data)
-    prediction_label = label_encoder.inverse_transform(prediction)
-
     probabilities = model.predict_proba(input_data)
 
-    # ---------------- OUTPUT SECTION ---------------- #
-    col1, col2 = st.columns(2)
+    # Convert encoded prediction back
+    prediction = label_encoder.inverse_transform(prediction)
 
-    with col1:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
-        st.subheader("🎯 Recommended Career")
-        st.success(prediction_label[0])
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    with col2:
-        readiness_score = int((coding + logical + reading + memory) / 20 * 100)
-        st.markdown('<div class="card">', unsafe_allow_html=True)
-        st.subheader("📈 Career Readiness Score")
-        st.progress(readiness_score)
-        st.write(f"Overall Readiness: {readiness_score}%")
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    # ---------------- PROBABILITY CHART ---------------- #
-    st.markdown("### 📊 Career Prediction Probability")
+    # Probability dataframe
     prob_df = pd.DataFrame(probabilities, columns=label_encoder.classes_)
-    st.bar_chart(prob_df.T)
 
-    # ---------------- ACTION PLAN ---------------- #
-    st.markdown("### 📌 Personalized Action Plan")
-    st.markdown('<div class="card">', unsafe_allow_html=True)
+    # Sort Top 3
+    top3 = prob_df.T.sort_values(by=0, ascending=False).head(3)
+
+    # ------------------ OUTPUT ------------------ #
+    st.success(f"🥇 Top Career Recommendation: {top3.index[0]}")
+
+    st.subheader("🏆 Top 3 Career Predictions")
+    for i, (career, prob) in enumerate(top3.itertuples()):
+        st.write(f"{i+1}. {career} — {round(prob*100, 2)}%")
+
+    # Probability Chart
+    st.subheader("📊 Career Prediction Probability Distribution")
+    st.bar_chart(top3)
+
+    # ------------------ Readiness Score ------------------ #
+    readiness_score = int((coding + logical + reading + memory) / 20 * 100)
+
+    st.subheader("📈 Career Readiness Score")
+    st.progress(readiness_score)
+    st.write(f"Overall Readiness: {readiness_score}%")
+
+    # ------------------ Personalized Action Plan ------------------ #
+    st.subheader("📌 Personalized Action Plan")
 
     if coding < 3:
         st.write("• Improve coding skills by building real-world projects.")
     if public < 3:
         st.write("• Practice communication and public speaking.")
     if logical < 3:
-        st.write("• Improve logical thinking with problem-solving practice.")
+        st.write("• Work on logical reasoning and problem solving.")
     if certifications < 2:
         st.write("• Complete relevant certifications in your field.")
     if teamwork == 0:
-        st.write("• Participate in team-based activities or hackathons.")
+        st.write("• Participate in team-based activities.")
 
-    st.write("• Stay consistent and keep upgrading your skills.")
-
-    st.markdown('</div>', unsafe_allow_html=True)
-
-st.markdown("---")
-st.caption("© 2026 AI Career Guidance System | Innovation Marathon Project")
+    st.write("• Stay consistent and keep upgrading your skills 🚀")
